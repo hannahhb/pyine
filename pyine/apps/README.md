@@ -16,6 +16,7 @@ Dataset preparation:
 
 - Splits: [`pyine/apps/splits/dataset_splitter.py`](./splits/dataset_splitter.py)
 - Traces & deltas writer: [`pyine/apps/write/dataset_writer.py`](./write/dataset_writer.py)
+- Local evaluation data export: [`pyine/apps/traces/eval_exporter.py`](./traces/eval_exporter.py)
 
 Trace annotation:
 
@@ -137,6 +138,26 @@ python -m pyine.apps.write.dataset_writer deltas \
 
 For instruction on how to generate the PyINE 10s10t v1 dataset based on TACO, see
 [this document](./README-10s10t-v1.md).
+
+______________________________________________________________________
+
+### Export traces for external evaluations
+
+**Script:** [`pyine/apps/traces/eval_exporter.py`](./traces/eval_exporter.py)
+
+```bash
+python -m pyine.apps.traces.eval_exporter \
+    --lmdb-pattern 'v1.5/10s10t.*of000026.*.lmdb' \
+    --output-dir /path/to/pyine-v1-predictor-eval
+```
+
+The command writes local `train.parquet`, `validation.parquet`, and `test.parquet` files plus an
+integrity manifest, frozen schemas/specification, environment inventory, and verification JSONL.
+It exports every trace from PyINE's original `train` problem partition and checks stored-record
+integrity by default. Fresh execution is opt-in with `--reexecute-max-step-count` or
+`--reexecute-all`. The exporter never uploads or overwrites a completed artifact. See the
+[`EVAL_EXPORT_SPEC.md`](../data/traces/EVAL_EXPORT_SPEC.md) contract for columns, split, value,
+outcome, certification, and training-use semantics.
 
 ______________________________________________________________________
 

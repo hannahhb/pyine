@@ -530,6 +530,8 @@ def _unsafe_execute_and_trace_code(
     timeout_seconds: float = 60,
     seed: int | None = 42,
     request_metadata: str | None = None,
+    capture_trace_events: bool = True,
+    precomputed_complexity_metrics: pyine.utils.code.complexity_metrics.ComplexityMetrics | None = None,
 ) -> TraceResult:
     """Execute Python code and trace the state of the execution at each line.
 
@@ -558,12 +560,16 @@ def _unsafe_execute_and_trace_code(
         timeout_seconds: The maximum number of seconds to allow for code execution.
         seed: The seed to use for random number generation. Defaults to 42.
         request_metadata: Additional metadata to include in the trace result (if any).
+        capture_trace_events: Whether to capture line-level trace events. Disable this to reuse
+            the execution and outcome-capture behavior without materializing a new execution trace.
+        precomputed_complexity_metrics: Optional code complexity metrics to reuse. This avoids
+            repeating static analysis when the caller already has metrics for the exact code string.
 
     Returns:
         A `TraceResult` instance containing the execution results.
     """
     try:
-        code_blocks = pyine.utils.code.blocks.identify_code_blocks(code_string)
+        code_blocks = pyine.utils.code.blocks.identify_code_blocks(code_string) if capture_trace_events else {}
         code_blocks = {
             TraceKey(
                 file=EXEC_TRACE_FILE_NAME,
@@ -757,7 +763,7 @@ def _unsafe_execute_and_trace_code(
             contextlib.redirect_stderr(typing.cast("typing.TextIO", stderr_capture)),
         ):  # noqa
             if entrypoint_name is not None:
-                with trace_context(_trace_callback):
+                with trace_context(_trace_callback) if capture_trace_events else contextlib.nullcontext():
                     exec(compiled_code, exec_namespace)  # noqa: S102
                 entrypoint = _resolve_entrypoint_from_namespace(exec_namespace, entrypoint_name)
                 if callable(entrypoint):
@@ -771,13 +777,16 @@ def _unsafe_execute_and_trace_code(
                         entrypoint_callable,
                         inputs,
                     )
-                    with trace_context(_trace_callback):
+                    with trace_context(_trace_callback) if capture_trace_events else contextlib.nullcontext():
                         return_value = entrypoint_callable(*entrypoint_args, **entrypoint_kwargs)
                     trace_tags.append(TraceTagType.HAS_EXEC_ENTRYPOINT.value)
                 else:
                     raise TypeError(f"entry point {entrypoint_name} resolved to non-callable {entrypoint!r}")
             else:
-                with pyine.utils.code.input_mock.MockInputContext(str(inputs)), trace_context(_trace_callback):
+                trace_execution_context = (
+                    trace_context(_trace_callback) if capture_trace_events else contextlib.nullcontext()
+                )
+                with pyine.utils.code.input_mock.MockInputContext(str(inputs)), trace_execution_context:
                     exec(compiled_code, exec_namespace)  # noqa: S102
             _capture_buffers()
     except (TimeoutError, TracingCapError):  # noqa: B025 - re-raising fallback timeout/cap breach indicators
@@ -794,6 +803,7 @@ def _unsafe_execute_and_trace_code(
     except Exception as e:
         # otherwise, if it's not a timeout/dontcatch/sysexit, store the exception as part of the results
         caught_exception = e
+    _capture_buffers()  # preserve output emitted before a caught exception, including when tracing is disabled
     reprod_metadata = typing.cast(
         "dict[str, pydantic.JsonValue]",
         pyine.utils.reprod.get_reprod_metadata(),
@@ -808,6 +818,8 @@ def _unsafe_execute_and_trace_code(
     reprod_metadata["timeout_seconds"] = str(timeout_seconds)
     reprod_metadata["seed"] = str(seed)
     reprod_metadata["request_metadata"] = str(request_metadata)
+    reprod_metadata["capture_trace_events"] = str(capture_trace_events)
+    reprod_metadata["used_precomputed_complexity_metrics"] = str(precomputed_complexity_metrics is not None)
     if return_value is not None:
         trace_tags.append(TraceTagType.HAS_RETURN_VALUE.value)
     if caught_exception is not None:
@@ -825,7 +837,9 @@ def _unsafe_execute_and_trace_code(
         serialized_expected_output: pydantic.JsonValue | None = repr(expected_output)
     else:
         serialized_expected_output = typing.cast("pydantic.JsonValue | None", expected_output)
-    complexity_metrics = pyine.utils.code.complexity_metrics.get_complexity_metrics(code_string)
+    complexity_metrics = precomputed_complexity_metrics or pyine.utils.code.complexity_metrics.get_complexity_metrics(
+        code_string
+    )
     try:
         trace_result = TraceResult(
             identifier=identifier,

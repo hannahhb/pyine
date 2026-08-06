@@ -121,6 +121,40 @@ print("one last note", file=sys.stderr)
     assert "one last note\n" in result.stderr  # might contain extra warnings from pydev/debugger
 
 
+def test_execution_without_trace_event_capture() -> None:
+    """Execute code normally while omitting line-level trace event collection."""
+    code = """\
+def add(first: int, second: int) -> int:
+    print("called")
+    return first + second
+"""
+    result = _unsafe_execute_and_trace_code(
+        code_string=code,
+        inputs=[2, 3],
+        entrypoint_name="add",
+        capture_trace_events=False,
+    )
+    assert result.return_value == 5
+    assert result.stdout == "called\n"
+    assert result.exception is None
+    assert result.code_blocks == {}
+    assert result.traced_steps == []
+    assert result.traced_steps_map == {}
+    assert result.metadata["capture_trace_events"] == "False"
+
+
+def test_execution_without_trace_events_preserves_output_before_system_exit() -> None:
+    """Preserve buffered stdout when outcome-only execution catches SystemExit."""
+    result = _unsafe_execute_and_trace_code(
+        code_string="import sys\nprint('done')\nsys.exit(13)\n",
+        capture_trace_events=False,
+    )
+    assert result.stdout == "done\n"
+    assert result.return_value == 13
+    assert result.exception is not None
+    assert result.exception.type == "SystemExit"
+
+
 def test_tracing_with_blacklist() -> None:
     code = """\
 
