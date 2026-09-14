@@ -1,23 +1,23 @@
 <p align="center">
-<a href="https://saifh-github.github.io/pyine"><img src="https://img.shields.io/badge/blog-read%20post-blue" alt="Blog Post"/></a>
-<a href="./paper/PyINE-framework-paper-v1-public.pdf"><img src="https://img.shields.io/badge/paper-preprint-B31B1B?logo=googledocs&logoColor=white" alt="Paper PDF"/></a>
+<a href="https://lawzero-org.github.io/pyine"><img src="https://img.shields.io/badge/blog-read%20post-blue" alt="Blog Post"/></a>
+<a href="./paper/PyINE-framework-paper-v1.1-public.pdf"><img src="https://img.shields.io/badge/paper-preprint-B31B1B?logo=googledocs&logoColor=white" alt="Paper PDF"/></a>
 <a href="https://huggingface.co/plstcharles-saifh"><img src="https://img.shields.io/badge/hugging%20face-models%20%26%20datasets-FFD21E?logo=huggingface&logoColor=FFF" alt="Hugging Face"/></a>
 <!-- <a href="https://arxiv.org/abs/2604.00641"><img src="https://img.shields.io/badge/paper-arXiv:2604.00641-B31B1B?logo=arxiv" alt="Paper"/></a> -->
 
 </p>
 
 <p align="center">
-<a href="https://github.com/saifh-github/pyine/actions/workflows/ci-full.yml"><img src="https://img.shields.io/github/actions/workflow/status/saifh-github/pyine/ci-full.yml?label=code%20checks%20(ruff%20%26%20pyright)&logo=github" alt="Code Checks"/></a>
-<a href="https://github.com/saifh-github/pyine/actions/workflows/ci-full.yml"><img src="https://img.shields.io/github/actions/workflow/status/saifh-github/pyine/ci-full.yml?label=tests%20(pytest)&logo=github" alt="Pytest"/></a>
+<a href="https://github.com/lawzero-org/pyine/actions/workflows/ci-full.yml"><img src="https://img.shields.io/github/actions/workflow/status/lawzero-org/pyine/ci-full.yml?label=code%20checks%20(ruff%20%26%20pyright)&logo=github" alt="Code Checks"/></a>
+<a href="https://github.com/lawzero-org/pyine/actions/workflows/ci-full.yml"><img src="https://img.shields.io/github/actions/workflow/status/lawzero-org/pyine/ci-full.yml?label=tests%20(pytest)&logo=github" alt="Pytest"/></a>
 </p>
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-%3E%3D3.12-blue?logo=python" alt="Python Version"/>
-<img src="https://img.shields.io/github/last-commit/saifh-github/pyine/main?label=repo%20latest%20update&logo=readthedocs" alt="Latest Repo Update"/>
+<img src="https://img.shields.io/github/last-commit/lawzero-org/pyine/main?label=repo%20latest%20update&logo=readthedocs" alt="Latest Repo Update"/>
 </p>
 
 <p align="center">
-<img src="https://img.shields.io/github/license/saifh-github/pyine?cacheBust=1" alt="License"/>
+<img src="https://img.shields.io/github/license/lawzero-org/pyine?cacheBust=1" alt="License"/>
 </p>
 
 # PyINE: Python Interpretation and Execution Framework
@@ -277,13 +277,12 @@ For more information, see the associated paper, or contact LawZero researchers d
 If you use this framework in your research, please cite:
 
 ```
-@article{plstcharles2026pyine,
+@misc{plstcharles2026pyine,
   title={{PyINE}: A Framework for Scalable Elicitation and Oversight via Code Execution},
   author={St-Charles, Pierre-Luc and Palmas, Alessandro and Fornasiere, Damiano and Bronzi, Mirko and Lei, Storm and Falet, Jean-Pierre and Serban, Iulian and Bengio, Yoshua},
-  journal={arXiv preprint},
-  volume={xxx.xxxxx},   % TODO SOON @@@@@@@@@@@
+  note={Preprint, version 1.1},
   year={2026},
-  url={https://arxiv.org/abs/xxx.xxxxx}  % TODO SOON @@@@@@@@@@@
+  url={https://lawzero-org.github.io/pyine/}
 }
 ```
 
