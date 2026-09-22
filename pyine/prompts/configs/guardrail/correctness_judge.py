@@ -4,6 +4,8 @@ import langchain_core.output_parsers
 import langchain_core.runnables
 import pydantic
 
+import pyine.prompts.utils as prompt_utils
+
 if typing.TYPE_CHECKING:
     import langchain_openai.chat_models.base
 
@@ -29,14 +31,58 @@ class CorrectnessJudgementWithReasoning(CorrectnessJudgement):
     )
 
 
+class BinaryCorrectnessJudgement(CorrectnessJudgement):
+    """Probability of binary execution correctness, without partial credit."""
+
+    score: typing.Annotated[pydantic.StrictFloat, pydantic.Field(ge=0.0, le=1.0)] = pydantic.Field(
+        description="P(the extracted final answer is correct), from 0 to 1; uncertainty, not partial credit.",
+    )
+    """Probability that the extracted final answer matches the actual execution outcome."""
+
+
+def _uses_binary_correctness(prompt_config: prompt_utils.PromptConfig) -> bool:
+    """Check the template's explicit binary-probability compatibility declaration."""
+    return (prompt_config.metadata.model_extra or {}).get("binary_correctness") is True
+
+
+def render_decision_prompt(
+    prompt_config: prompt_utils.PromptConfig,
+    input_variables: dict[str, str],
+) -> tuple[str, str]:
+    """Render the shared binary rubric and evidence for a native decision API.
+
+    Args:
+        prompt_config: Resolved template declaring binary_correctness: true in its metadata.
+        input_variables: Sanitized prompt, model_output, and final_answer evidence.
+
+    Returns:
+        The instructions and state strings. Instructions share the monitor's
+        system message with an empty response-format insertion and trailing
+        whitespace removed; state uses the monitor's rendered question block.
+
+    Raises:
+        ValueError: The template does not explicitly declare binary correctness.
+    """
+    if not _uses_binary_correctness(prompt_config):
+        raise ValueError("decision models require explicit binary_correctness: true prompt metadata")
+    instructions = prompt_config.get_system_message(context_variables={"expected_output_format": ""})
+    assert isinstance(instructions, str)
+    return instructions.rstrip(), prompt_config.question.render_prompt(**input_variables)
+
+
 def _get_structured_output_model(
     version: "pyine.prompts.types.PromptVersionType | None" = None,
 ) -> type[CorrectnessJudgement]:
-    """Return the Pydantic model for the given prompt version."""
+    """Return the version's output schema, preserving the legacy None-version schema."""
     if version == "with_reasoning" or version is None:
         return CorrectnessJudgementWithReasoning
     if version == "score_only":
         return CorrectnessJudgement
+    import pyine.prompts.manager
+
+    prompt_config = pyine.prompts.manager.get_prompt_config("guardrail/correctness_judge", version=version)
+    if _uses_binary_correctness(prompt_config):
+        return BinaryCorrectnessJudgement
     raise NotImplementedError(f"Unsupported version: {version}")
 
 

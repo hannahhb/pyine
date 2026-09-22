@@ -1,0 +1,35 @@
+# @package _global_
+#
+# base config for decision model guardrail evaluation
+# extend with a provider-specific config before running
+
+defaults:
+  - /config/evals_config: correctness_base
+  - override /config/evals_config/calibration_resampling: skewed_moderate_bias
+  - _self_
+
+runtime:
+  exp_name: decision_model
+  run_name: "${now:%Y%m%d_%H%M%S}"
+  seed: 42
+
+config:
+  use_wandb_logging: false
+
+  guardrail_config:
+    prompt_name: guardrail/correctness_judge
+    prompt_version: binary_correctness_v1
+    max_workers: 4
+    requests_per_second: 5
+    missing_answer_policy: score_zero
+    cache_within_run: true
+
+  evals_config:
+    result_dump_dir: "${runtime.output_dir}/benchmark_export"
+    datamodule_config:
+      lmdb_paths: ???
+      split_config:
+        split_source: ???
+      eval_subset_names:
+        - guardrail_test
+    target_fpr_values: [0.001, 0.01, 0.05, 0.1, 0.2, 0.5]

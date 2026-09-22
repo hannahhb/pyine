@@ -1,0 +1,27 @@
+# @package _global_
+# matched binary rubric for comparison with decision_model_eval_jev
+
+defaults:
+  - guardrail/prompted_llm_eval_base
+  - _self_
+
+runtime:
+  run_name: "${config.guardrail_config.llm_provider.model_kwargs.model}/${config.guardrail_config.prompt_version}/${now:%Y%m%d_%H%M%S}"
+
+config:
+  guardrail_config:
+    prompt_version: binary_correctness_v1
+    default_score_on_missing_answer: 0.0
+    llm_provider:
+      provider: openai
+      model_kwargs:
+        model: gpt-5-mini
+        max_tokens: 10000
+      rate_limiter_config:
+        requests_per_second: 100
+        max_bucket_size: 100
+  evals_config:
+    datamodule_config:
+      lmdb_paths: ???
+      split_config:
+        split_source: ???

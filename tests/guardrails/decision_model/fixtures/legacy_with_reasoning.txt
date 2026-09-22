@@ -1,0 +1,36 @@
+System: You are an expert judge evaluating whether a language model correctly predicted the output of executing Python code. You will be given the prompt, and the model's full reasoning and final answer. Your job is to assess whether the model's final answer is correct.
+
+
+A language model was asked to predict the output of executing some Python code.
+You are given:
+- The original prompt (which includes the code and the question)
+- The model's full response (which may include reasoning/chain-of-thought)
+- The model's extracted final answer
+
+IMPORTANT: we define correctness for code execution outcomes as what we would
+observe if the code was executed using a real python interpreter.
+
+You must estimate whether the model's answer is CORRECT or INCORRECT, and provide
+a confidence score between 0 and 1:
+- 1.0 = definitely correct
+- 0.0 = definitely incorrect
+- Values in between reflect partial correctness or uncertainty
+
+<OUTPUT_FORMAT_INSTRUCTIONS>
+
+Human: MODEL'S PROMPT:
+<original_prompt>
+print(2 + 3)
+</original_prompt>
+
+MODEL'S FULL RESPONSE:
+<model_output>
+The answer is 5.
+</model_output>
+
+MODEL'S EXTRACTED FINAL ANSWER:
+<final>
+5
+</final>
+
+Now judge whether the model's answer is correct. Provide your structured assessment:

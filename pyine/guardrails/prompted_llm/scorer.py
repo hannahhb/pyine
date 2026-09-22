@@ -11,6 +11,7 @@ import typing
 import tqdm
 
 import pyine.evals.correctness.types as correctness_types
+import pyine.guardrails.prompt_inputs
 import pyine.prompts.manager
 import pyine.utils.langchain
 
@@ -33,15 +34,7 @@ class _ScoringOutcome:
     decision_type: ScoringDecisionType
 
 
-def _sanitize_for_json_encoding(text: str) -> str:
-    """Replace lone Unicode surrogates that would cause invalid UTF-8 during JSON serialization.
-
-    Lone surrogates (U+D800..U+DFFF) are invalid in UTF-8 and will cause failures when httpx encodes
-    the JSON request body. This replaces them with the Unicode replacement character (U+FFFD).
-    Note that the round-trip may expand lone surrogates into multiple replacement characters, so
-    string length is not preserved.
-    """
-    return text.encode("utf-8", errors="surrogatepass").decode("utf-8", errors="replace")
+_sanitize_for_json_encoding = pyine.guardrails.prompt_inputs.sanitize_for_json_encoding
 
 
 class PromptedLLMGuardrailScorer:
@@ -66,6 +59,15 @@ class PromptedLLMGuardrailScorer:
             use_chat_template=config.use_chat_template,
             runnable_name="correctness_judge",
         )
+        self._prompt_provenance = pyine.guardrails.prompt_inputs.get_prompt_provenance(
+            pyine.prompts.manager.get_prompt_config(config.prompt_name, version=config.prompt_version),
+            config.prompt_version,
+        )
+        self._prompt_provenance["response_prompt_template"] = pyine.prompts.manager.get_prompt_template(
+            prompt_name=config.prompt_name,
+            version=config.prompt_version,
+            use_chat_template=config.use_chat_template,
+        ).pretty_repr()
         self._error_count: int = 0
         self._skipped_no_final_answer: int = 0
         self._error_lock = threading.Lock()
@@ -125,13 +127,6 @@ class PromptedLLMGuardrailScorer:
 
         Called from worker threads. Error counting is protected by a threading.Lock.
         """
-        prompt = record.record.get("prompt")
-        if prompt is None:
-            prompt_messages = record.record.get("prompt_messages")
-            assert prompt_messages is not None, (
-                "EvalRecord must contain either 'prompt' or 'prompt_messages' for prompted LLM scoring"
-            )
-            prompt = self._format_prompt_messages(prompt_messages)
         if record.final_answer is None:
             logger.debug(
                 f"record {record.sample_id} has no final_answer; "
@@ -145,11 +140,7 @@ class PromptedLLMGuardrailScorer:
                 reasoning=None,
                 decision_type="missing_answer",
             )
-        input_vars: dict[str, typing.Any] = {
-            "prompt": _sanitize_for_json_encoding(prompt),
-            "model_output": _sanitize_for_json_encoding(record.model_output),
-            "final_answer": _sanitize_for_json_encoding(record.final_answer),
-        }
+        input_vars = pyine.guardrails.prompt_inputs.get_judge_input_variables(record)
 
         handler = pyine.utils.langchain.CaptureLLMHandler()
         reasoning: str | None = None
@@ -204,29 +195,7 @@ class PromptedLLMGuardrailScorer:
             decision_type=decision_type,
         )
 
-    @staticmethod
-    def _format_prompt_messages(prompt_messages: list[dict[str, typing.Any]]) -> str:
-        """Format a list of chat message dicts into a readable string for the judge prompt.
-
-        Content may be a plain string or a list of content parts (e.g. from messages stored via
-        ``make_json_serializable``); non-string content is coerced to string.
-
-        Note: we drop the role here to make sure we don't confuse or get refusals from the judge.
-        This should be fine, as we're expecting to only merge 'system' with 'user' messages.
-        """
-        assert len(prompt_messages) > 0, "prompt_messages must not be empty"
-        parts: list[str] = []
-        for msg in prompt_messages:
-            content = msg.get("content", "")
-            if isinstance(content, list):
-                content = "\n".join(
-                    part.get("text", str(part)) if isinstance(part, dict) else str(part)  # type: ignore
-                    for part in content  # type: ignore
-                )
-            elif not isinstance(content, str):
-                content = str(content)
-            parts.append(content)
-        return "\n\n".join(parts)
+    _format_prompt_messages = staticmethod(pyine.guardrails.prompt_inputs.format_prompt_messages)
 
     @staticmethod
     def _extract_token_count(
@@ -239,7 +208,7 @@ class PromptedLLMGuardrailScorer:
         """Return guardrail metadata for reporting."""
         return {
             "scorer_type": "prompted_llm",
-            "prompt_name": self._config.prompt_name,
+            **self._prompt_provenance,
             "provider": self._config.llm_provider.provider,
             "model_kwargs": self._config.llm_provider.model_kwargs,
             "max_workers": self._config.max_workers,

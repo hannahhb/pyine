@@ -28,6 +28,7 @@ python -m pyine.apps.trainers.llm_classifier_trainer_configs
 # standalone guardrail evaluators
 python -m pyine.apps.guardrail_eval.baseline_eval_configs
 python -m pyine.apps.guardrail_eval.prompted_llm_eval_configs
+python -m pyine.apps.guardrail_eval.decision_model_eval_configs
 python -m pyine.apps.guardrail_eval.debate_eval_configs
 ```
 

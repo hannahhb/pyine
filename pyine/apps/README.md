@@ -47,6 +47,9 @@ Standalone guardrail evaluation (Hydra-based apps):
   ([guide](./guardrail_eval/PROMPTED_LLM_EVAL_GUIDE.md))
 - Multi-turn LLM debate eval: [`pyine/apps/guardrail_eval/debate_eval.py`](./guardrail_eval/debate_eval.py)
   ([guide](./guardrail_eval/DEBATE_EVAL_GUIDE.md))
+- Remote decision-model eval (Jev and Jev/System-One-compatible APIs):
+  [`pyine/apps/guardrail_eval/decision_model_eval.py`](./guardrail_eval/decision_model_eval.py)
+  ([guide](./guardrail_eval/DECISION_MODEL_EVAL_GUIDE.md))
 
 For instructions on how to create and manage new experiment configuration files for the apps that
 rely on Hydra, see [this document](../configs/README.md).

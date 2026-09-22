@@ -34,6 +34,10 @@ multi-node SLURM training in particular, see [`SLURM_GUIDE.md`](./SLURM_GUIDE.md
   trainer across the resampling-bias presets (weak / moderate / strong).
 - [`run_prompted_llm_eval_openai_sweep.sh`](./run_prompted_llm_eval_openai_sweep.sh): sweeps
   the prompted-LLM guardrail eval across OpenAI models and reasoning-effort levels.
+- [`run_decision_model_eval_sweep.sh`](./run_decision_model_eval_sweep.sh): runs Jev and
+  the GPT-5-mini monitor sequentially with a shared binary rubric, dataset, calibration,
+  and evaluation settings. Supports `--print-only`, `--dry-run`, and shared Hydra overrides;
+  uses remote APIs and requires no GPU.
 - [`run_prompted_llm_eval_vllm_sweep.sh`](./run_prompted_llm_eval_vllm_sweep.sh): sweeps the
   prompted-LLM guardrail eval across a list of vLLM-served HuggingFace models.
 
