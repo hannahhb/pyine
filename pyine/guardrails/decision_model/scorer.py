@@ -165,8 +165,9 @@ class DecisionModelGuardrailScorer:
         self._limiter.acquire(blocking=True)
         started = time.monotonic()
         prediction = self._client.predict(instructions=request.instructions, state=request.state)
-        if prediction.model != self._config.provider.model:
-            raise ValueError(f"expected model {self._config.provider.model!r}, received {prediction.model!r}")
+        expected_model = self._config.provider.expected_model or self._config.provider.model
+        if prediction.model != expected_model:
+            raise ValueError(f"expected model {expected_model!r}, received {prediction.model!r}")
         if self._config.provider.require_token_usage and prediction.input_tokens is None:
             raise ValueError("the configured provider must report token usage")
         return prediction, time.monotonic() - started

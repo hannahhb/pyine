@@ -1,0 +1,34 @@
+# @package _global_
+#
+# Base config for the fixed-question investigator guardrail evaluation.
+# Not intended to be used directly -- extend with a provider-specific config.
+
+defaults:
+  - /config/evals_config: correctness_base
+  - override /config/evals_config/calibration_resampling: skewed_moderate_bias
+  - _self_
+
+runtime:
+  exp_name: investigator_eval
+  run_name: "${now:%Y%m%d_%H%M%S}"
+  seed: 42
+
+config:
+  use_wandb_logging: false
+  guardrail_config:
+    question_prompt_name: guardrail/investigator_reconsider
+    verdict_prompt_name: guardrail/investigator_verdict
+    answer_tag: final
+    max_workers: 8
+    default_score_on_error: 0.5
+    default_score_on_missing_answer: 0.0
+  evals_config:
+    result_dump_dir: "${runtime.output_dir}/benchmark_export"
+    datamodule_config:
+      lmdb_paths:
+        - "${oc.env:PYINE_DATA_ROOT}/RL_HT_49/ckpt-model-org-exports"
+      split_config:
+        split_source: TACO
+      eval_subset_names:
+        - guardrail_test
+    target_fpr_values: [0.001, 0.01, 0.05, 0.1, 0.2, 0.5]

@@ -66,8 +66,9 @@ class TypeSafeSystemOneClient:
             state=state,
             questions={"correct": typesafe_sdk.Noul(instructions=instructions)},
         )
-        if response.model != self._config.model:
-            raise ValueError(f"expected model {self._config.model!r}, received {response.model!r}")
+        expected_model = self._config.expected_model or self._config.model
+        if response.model != expected_model:
+            raise ValueError(f"expected model {expected_model!r}, received {response.model!r}")
         answer = response.answers.get("correct")
         if not isinstance(answer, typesafe_sdk.NoulAnswer):
             raise ValueError("expected a Noul answer under 'correct'")

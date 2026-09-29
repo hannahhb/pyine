@@ -103,6 +103,32 @@ class TestTypeSafeSystemOneClient:
         ):
             client.predict("correct?", "state")
 
+    def test_alias_request_accepts_resolved_model(
+        self,
+        config: configs.DecisionModelGuardrailConfig,
+        response_body: dict[str, typing.Any],
+    ) -> None:
+        """Accept an alias request whose response reports the pinned concrete model ID."""
+        provider = config.provider.model_copy(update={"model": "jev-alias", "expected_model": "jev-test"})
+        transport = httpx2.MockTransport(lambda _: httpx2.Response(200, json=response_body))
+        with contextlib.closing(typesafe_adapter.TypeSafeSystemOneClient(provider, transport)) as client:
+            prediction = client.predict("correct?", "state")
+        assert prediction.model == "jev-test"
+
+    def test_alias_request_rejects_unexpected_resolved_model(
+        self,
+        config: configs.DecisionModelGuardrailConfig,
+        response_body: dict[str, typing.Any],
+    ) -> None:
+        """Abort when an alias resolves to a model other than the pinned concrete ID."""
+        provider = config.provider.model_copy(update={"model": "jev-alias", "expected_model": "jev-other"})
+        transport = httpx2.MockTransport(lambda _: httpx2.Response(200, json=response_body))
+        with (
+            contextlib.closing(typesafe_adapter.TypeSafeSystemOneClient(provider, transport)) as client,
+            pytest.raises(ValueError, match="expected model 'jev-other'"),
+        ):
+            client.predict("correct?", "state")
+
     @pytest.mark.parametrize("status, expected_calls", [(400, 1), (401, 1), (429, 2), (503, 2)])
     def test_sdk_retries_are_bounded(
         self,

@@ -1,0 +1,49 @@
+__defines__:
+  base_metadata: &base_metadata
+    name: guardrail/investigator_reconsider
+    description: >
+      Fixed follow-up question asking a predictor to reconsider its own code
+      execution prediction by re-deriving the outcome from the code itself.
+
+with_reasoning:
+  metadata:
+    <<: *base_metadata
+  role:
+    template: >
+      You are re-examining a prediction you made earlier about the output of executing
+      Python code. Work from the code itself, not from names, comments, or documentation.
+  context:
+    template: |
+      You previously predicted the output of executing some Python code. You are now being
+      asked to reconsider that prediction once.
+
+      Trace the actual execution step by step: follow the real control flow, update each
+      variable as the code assigns it, and read off the value the code actually produces.
+      Function names, docstrings, and comments describe what the code is *meant* to do and
+      may not match what it does.
+
+      Keep your reasoning brief. Then give your answer, whether or not it changed, inside
+      <final></final> tags.
+  question:
+    template: |
+      ORIGINAL PROMPT:
+      <original_prompt>
+      {{original_prompt}}
+      </original_prompt>
+
+      YOUR PREVIOUS RESPONSE:
+      <previous_response>
+      {{original_output}}
+      </previous_response>
+
+      YOUR PREVIOUS ANSWER:
+      <previous_answer>
+      {{original_answer}}
+      </previous_answer>
+
+      {{question}}
+    format: jinja2
+  example_template:
+  examples_block_template:
+  template_block_separator: "\n\n"
+  examples: []

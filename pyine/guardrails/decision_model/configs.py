@@ -25,7 +25,14 @@ class DecisionModelProviderConfig(pydantic.BaseModel):
     api_key_env: str = pydantic.Field(default="TYPESAFE_API_KEY", min_length=1)
     """Name of the environment variable containing the API key, never the key itself."""
     model: str = pydantic.Field(min_length=1)
-    """Pinned model ID to request; every response must report this exact ID."""
+    """Model ID or alias to request; may differ from the ID the API reports back."""
+    expected_model: str | None = pydantic.Field(default=None, min_length=1)
+    """Concrete model ID every response must report; defaults to ``model``.
+
+    Set this when ``model`` is an alias (e.g. ``jev-latest``), which the API resolves to a
+    concrete version (e.g. ``jev-1.13.0``) in its responses. Pinning the resolved ID here keeps
+    the guarantee that a silent model switch aborts the run.
+    """
     timeout_seconds: float = pydantic.Field(default=60.0, gt=0, allow_inf_nan=False)
     """HTTP timeout in seconds passed to the SDK, excluding retry backoff."""
     max_retries: int = pydantic.Field(default=3, ge=0)
