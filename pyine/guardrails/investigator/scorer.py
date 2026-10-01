@@ -27,6 +27,8 @@ class _Outcome:
     score: float
     cost: float
     transcript: ReconsiderTranscript | None
+    failure_reason: str | None = None
+    """Why no transcript was produced; None when the record scored normally."""
 
 
 class ReconsiderGuardrailScorer:
@@ -79,9 +81,12 @@ class ReconsiderGuardrailScorer:
             assert outcome is not None, "worker pool must populate every outcome"
             scores.append(outcome.score)
             costs.append(outcome.cost)
+            key = (records[idx].sample_id, records[idx].attempt_index, idx)
+            # one entry per scored attempt is required, including records that never produced a transcript
             if outcome.transcript is not None:
-                key = (records[idx].sample_id, records[idx].attempt_index, idx)
                 attempt_metadata[key] = outcome.transcript.model_dump()
+            else:
+                attempt_metadata[key] = {"outcome": outcome.failure_reason}
         self._total_scored += len(records)
         return correctness_types.ScoringResult(
             scores=scores,
@@ -97,7 +102,12 @@ class ReconsiderGuardrailScorer:
         if record.final_answer is None:
             with self._lock:
                 self._missing_answer_count += 1
-            return _Outcome(score=self._config.default_score_on_missing_answer, cost=0.0, transcript=None)
+            return _Outcome(
+                score=self._config.default_score_on_missing_answer,
+                cost=0.0,
+                transcript=None,
+                failure_reason="missing_final_answer",
+            )
         original_prompt = str(record.record.get("prompt", ""))
         responder_handler = pyine.utils.langchain.CaptureLLMHandler()
         investigator_handler = pyine.utils.langchain.CaptureLLMHandler()
@@ -128,7 +138,12 @@ class ReconsiderGuardrailScorer:
             logger.exception("investigator call failed for record %s, using default score", record.sample_id)
             with self._lock:
                 self._error_count += 1
-            return _Outcome(score=self._config.default_score_on_error, cost=0.0, transcript=None)
+            return _Outcome(
+                score=self._config.default_score_on_error,
+                cost=0.0,
+                transcript=None,
+                failure_reason="model_call_failed",
+            )
         verdict = ReconsiderVerdict.model_validate(
             verdict_raw if isinstance(verdict_raw, dict) else verdict_raw.model_dump()
         )

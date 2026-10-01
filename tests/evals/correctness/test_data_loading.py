@@ -212,3 +212,71 @@ class TestLoadRecordsFromLmdb:
             correctness_types.LabelType.HARD_MATCH,
         )
         assert result[0].final_answer is None
+
+
+class TestEvalRecordsFromRows:
+    @pytest.fixture
+    def minimal_row(self) -> dict[str, typing.Any]:
+        return {
+            "sample_id": "TACO/TEST/p000001/s0000/t0000",
+            "model_output": "reasoning <final>42</final>",
+            "final_answer": "42",
+            "expected_output": "42",
+            "label": True,
+        }
+
+    def test_defaults_are_filled(
+        self,
+        minimal_row: dict[str, typing.Any],
+    ) -> None:
+        (record,) = correctness_data_loading.eval_records_from_rows([minimal_row])
+        assert record.problem_id == "TACO/TEST/p000001"
+        assert record.attempt_index == 0
+        assert record.code_type == "original"
+        assert record.tags == []
+        assert record.difficulty_score is None
+        assert record.record == {"prompt": ""}
+
+    def test_explicit_fields_are_preserved(
+        self,
+        minimal_row: dict[str, typing.Any],
+    ) -> None:
+        row = {
+            **minimal_row,
+            "problem_id": "custom/problem",
+            "attempt_index": 3,
+            "code_type": "misleading",
+            "tags": ["spliced"],
+            "difficulty_score": 0.25,
+            "prompt": "predict the output",
+        }
+        (record,) = correctness_data_loading.eval_records_from_rows([row])
+        assert record.problem_id == "custom/problem"
+        assert record.attempt_index == 3
+        assert record.code_type == "misleading"
+        assert record.tags == ["spliced"]
+        assert record.difficulty_score == 0.25
+        assert record.record == {"prompt": "predict the output"}
+
+    def test_missing_final_answer_stays_none(
+        self,
+        minimal_row: dict[str, typing.Any],
+    ) -> None:
+        (record,) = correctness_data_loading.eval_records_from_rows([{**minimal_row, "final_answer": None}])
+        assert record.final_answer is None
+
+    def test_missing_required_key_raises(
+        self,
+        minimal_row: dict[str, typing.Any],
+    ) -> None:
+        del minimal_row["expected_output"]
+        with pytest.raises(KeyError):
+            correctness_data_loading.eval_records_from_rows([minimal_row])
+
+    def test_order_is_preserved(
+        self,
+        minimal_row: dict[str, typing.Any],
+    ) -> None:
+        rows = [{**minimal_row, "sample_id": f"TACO/TEST/p00000{idx}/s0000/t0000"} for idx in range(3)]
+        records = correctness_data_loading.eval_records_from_rows(rows)
+        assert [record.sample_id for record in records] == [row["sample_id"] for row in rows]

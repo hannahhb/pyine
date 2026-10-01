@@ -1,11 +1,14 @@
-"""LMDB reading for the guardrail correctness evaluation pipeline.
+"""Record loading for the guardrail correctness evaluation pipeline.
 
 Loads pregenerated evaluation records from LMDB datasets (produced by ``DiskEvalLogger`` during
-a code execution evaluation run) and converts them into ``EvalRecord`` objects.
+a code execution evaluation run) and converts them into ``EvalRecord`` objects. Records built
+outside the framework (for example from a statements export, or from predictions generated
+ad hoc) can be converted with ``eval_records_from_rows`` instead.
 """
 
 from __future__ import annotations
 
+import collections.abc  # noqa: TC003
 import logging
 import pathlib  # noqa: TC003
 import typing
@@ -114,5 +117,51 @@ def load_records_from_lmdb(
             "LMDB records have mixed difficulty_score availability; "
             "either include difficulty_score for all records or omit it entirely. "
             f"Missing count: {len(missing_difficulty_ids)}.{detail}"
+        )
+    return records
+
+
+def eval_records_from_rows(
+    rows: collections.abc.Iterable[collections.abc.Mapping[str, typing.Any]],
+) -> list[correctness_types.EvalRecord]:
+    """Convert plain mappings into ``EvalRecord``s for scorers that take records directly.
+
+    Lets a guardrail scorer be exercised on data that never passed through LMDB or the
+    datamodule, such as predictions generated against a statements export. Every scorer
+    implementing ``GuardrailScorer`` accepts the resulting list via ``score_records``.
+
+    Args:
+        rows: Mappings carrying at least ``sample_id``, ``model_output``, ``final_answer``,
+            ``expected_output``, and ``label``. ``problem_id`` is derived from ``sample_id``
+            when absent, ``attempt_index`` defaults to 0, ``code_type`` to ``"original"``,
+            and ``record`` to a prompt-only mapping built from an optional ``prompt`` key.
+
+    Returns:
+        One ``EvalRecord`` per row, in input order.
+
+    Raises:
+        KeyError: A row is missing a required key.
+    """
+    records: list[correctness_types.EvalRecord] = []
+    for row in rows:
+        sample_id = str(row["sample_id"])
+        problem_id = row.get("problem_id")
+        final_answer = row["final_answer"]
+        records.append(
+            correctness_types.EvalRecord(
+                sample_id=sample_id,
+                problem_id=str(problem_id)
+                if problem_id is not None
+                else correctness_splits.extract_problem_id(sample_id),
+                attempt_index=int(row.get("attempt_index", 0)),
+                model_output=str(row["model_output"]),
+                final_answer=None if final_answer is None else str(final_answer),
+                expected_output=str(row["expected_output"]),
+                label=bool(row["label"]),
+                code_type=str(row.get("code_type", "original")),
+                tags=list(row.get("tags") or []),
+                record=dict(row.get("record") or {"prompt": row.get("prompt", "")}),
+                difficulty_score=row.get("difficulty_score"),
+            )
         )
     return records
