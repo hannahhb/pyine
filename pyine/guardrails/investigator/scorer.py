@@ -162,13 +162,19 @@ class ReconsiderGuardrailScorer:
         self,
         revised_output: str,
     ) -> str | None:
-        """Pull the tagged final answer out of a free-text reply, or None when absent."""
+        """Pull the tagged final answer out of a free-text reply, or None when absent.
+
+        Follows the predictor-side parser: a reply carrying several answer tags is resolved by
+        policy rather than discarded, since models routinely emit the tag mid-reasoning and again
+        at the end.
+        """
         result = pyine.utils.parsing.extract_tag_blocks(revised_output, self._config.answer_tag)
-        if result.block_count != 1:
+        selection = pyine.utils.parsing.select_tag_block(result, policy=self._config.multi_tag_policy)
+        if selection is None:
             with self._lock:
                 self._unparsed_revision_count += 1
             return None
-        return result.blocks[0].strip()
+        return selection[0].strip()
 
     def get_metadata(self) -> dict[str, typing.Any]:
         """Return scorer provenance for the evaluation record."""

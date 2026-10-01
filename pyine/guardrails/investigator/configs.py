@@ -1,5 +1,7 @@
 """Configuration for the fixed-question investigator guardrail."""
 
+import typing
+
 import pydantic
 
 import pyine.utils.llm_providers
@@ -34,6 +36,8 @@ class ReconsiderGuardrailConfig(pydantic.BaseModel):
     """
     answer_tag: str = "final"
     """Tag whose contents hold the responder's revised final answer."""
+    multi_tag_policy: typing.Literal["first", "last", "error"] = "last"
+    """Which answer tag to keep when the responder emits several; mirrors the predictor parser."""
     use_chat_template: bool = True
     """Whether to render prompts as system/human chat messages."""
     max_workers: int = pydantic.Field(default=8, ge=1)
